@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoneyTrack — Dashboard</title>
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    .saldo-card { background: linear-gradient(135deg, var(--azul-escuro) 0%, var(--azul) 100%); border-radius: var(--radius-xl); padding: var(--gap-xl); margin-bottom: var(--gap-lg); border: none; position: relative; overflow: hidden; }
+    .saldo-blob { position: absolute; border-radius: 50%; background: rgba(255,255,255,0.07); }
+    .saldo-blob-1 { width: 200px; height: 200px; top: -60px; right: -60px; }
+    .saldo-blob-2 { width: 140px; height: 140px; bottom: -40px; left: 20px; }
+    .saldo-label { font-size: 11px; color: rgba(255,255,255,0.65); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .saldo-valor { font-size: clamp(2rem, 5vw, 2.8rem); font-weight: 800; color: #fff; letter-spacing: -1.5px; margin-bottom: var(--gap-lg); line-height: 1; }
+    .saldo-stats { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-md); }
+    .saldo-stat { background: rgba(255,255,255,0.12); border-radius: var(--radius-md); padding: var(--gap-md); backdrop-filter: blur(4px); }
+    .stat-label { font-size: 10px; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+    .stat-valor { font-size: var(--text-xl); font-weight: 800; color: #fff; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap-md); margin-bottom: var(--gap-lg); }
+    .mini-card { background: var(--surface); border: 1px solid var(--borda); border-radius: var(--radius-lg); padding: var(--gap-lg); display: flex; align-items: center; gap: var(--gap-md); box-shadow: var(--sombra-sm); transition: var(--transicao); }
+    .mini-card:hover { box-shadow: var(--sombra-md); transform: translateY(-2px); }
+    .mini-icon { width: 44px; height: 44px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .mini-icon-azul { background: var(--azul-claro); color: var(--azul-escuro); }
+    .mini-icon-verde { background: var(--entrada-claro); color: var(--verde-escuro); }
+    .mini-icon-laranja { background: #FEF3C7; color: #D97706; }
+    .mini-label { font-size: 11px; color: var(--texto-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+    .mini-val { font-size: var(--text-2xl); font-weight: 800; color: var(--texto-principal); letter-spacing: -.3px; }
+
+    .recentes-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--gap-lg); }
+    .recentes-title { font-size: var(--text-lg); font-weight: 800; color: var(--texto-principal); display: flex; align-items: center; gap: 8px; }
+
+    .trans-item { display: flex; align-items: center; gap: var(--gap-md); padding: 12px 0; border-bottom: 1px solid var(--borda); }
+    .trans-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .trans-ico { width: 40px; height: 40px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+    .ico-e { background: var(--entrada-claro); color: var(--verde-escuro); }
+    .ico-s { background: var(--saida-claro); color: #B91C1C; }
+    .trans-desc { font-size: var(--text-sm); font-weight: 700; color: var(--texto-principal); }
+    .trans-cat { font-size: 11px; color: var(--texto-muted); margin-top: 2px; }
+    .trans-right { margin-left: auto; text-align: right; }
+    .trans-val { font-size: var(--text-sm); font-weight: 800; }
+    .trans-date { font-size: 11px; color: var(--texto-muted); margin-top: 2px; }
+
+    @media(max-width: 768px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
+    @media(max-width: 480px) { .stats-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-container"></div>
+  <main class="app-content">
+    <div class="content-inner">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title" id="saudacao">Olá! 👋</h1>
+          <p class="page-subtitle" id="data-hoje"></p>
+        </div>
+        <button class="btn btn-primary btn-lg" onclick="window.location.href='transacoes.html'">
+          <i class="ti ti-plus"></i> Nova Transação
+        </button>
+      </div>
+
+      <div class="saldo-card">
+        <div class="saldo-blob saldo-blob-1"></div>
+        <div class="saldo-blob saldo-blob-2"></div>
+        <div class="saldo-label"><i class="ti ti-wallet" style="font-size:13px;vertical-align:-2px"></i> Saldo atual</div>
+        <div class="saldo-valor" id="saldo-valor">R$ 0,00</div>
+        <div class="saldo-stats">
+          <div class="saldo-stat">
+            <div class="stat-label"><i class="ti ti-arrow-up"></i> Entradas</div>
+            <div class="stat-valor" id="total-entradas">R$ 0,00</div>
+          </div>
+          <div class="saldo-stat">
+            <div class="stat-label"><i class="ti ti-arrow-down"></i> Saídas</div>
+            <div class="stat-valor" id="total-saidas">R$ 0,00</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="mini-card">
+          <div class="mini-icon mini-icon-azul"><i class="ti ti-receipt"></i></div>
+          <div><div class="mini-label">Transações</div><div class="mini-val" id="total-transacoes">0</div></div>
+        </div>
+        <div class="mini-card">
+          <div class="mini-icon mini-icon-verde"><i class="ti ti-tag"></i></div>
+          <div><div class="mini-label">Categorias</div><div class="mini-val" id="total-categorias">0</div></div>
+        </div>
+        <div class="mini-card">
+          <div class="mini-icon mini-icon-laranja"><i class="ti ti-target"></i></div>
+          <div><div class="mini-label">Metas ativas</div><div class="mini-val" id="total-metas">0</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="recentes-header">
+          <div class="recentes-title"><i class="ti ti-clock" style="color:var(--azul)"></i> Últimas transações</div>
+          <a href="transacoes.html" class="btn btn-ghost btn-sm"><i class="ti ti-arrow-right"></i> Ver todas</a>
+        </div>
+        <div id="lista-recentes"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/utils.js"></script>
+<script src="../assets/js/guard.js"></script>
+<script src="../assets/js/sidebar.js"></script>
+<script>
+  renderSidebar('dashboard');
+  const usuario = getUsuario();
+  if (usuario) document.getElementById('saudacao').textContent = `Olá, ${usuario.nome.split(' ')[0]}! 👋`;
+  const diasSemana = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const d = new Date();
+  document.getElementById('data-hoje').textContent = `${diasSemana[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+
+  async function carregar() {
+    const [resSaldo, resTs, resCat] = await Promise.all([api.saldo.obter(), api.transacoes.listar(), api.categorias.listar()]);
+    if (resSaldo.ok) {
+      const { saldo, totalEntradas, totalSaidas } = resSaldo.data.dados;
+      document.getElementById('saldo-valor').textContent = formatarMoeda(saldo);
+      document.getElementById('total-entradas').textContent = formatarMoeda(totalEntradas);
+      document.getElementById('total-saidas').textContent = formatarMoeda(totalSaidas);
+    }
+    if (resTs.ok) {
+      const ts = resTs.data.dados.transacoes;
+      document.getElementById('total-transacoes').textContent = ts.length;
+      const lista = document.getElementById('lista-recentes');
+      if (ts.length === 0) {
+        lista.innerHTML = `<div class="empty-state"><i class="ti ti-receipt-off empty-icon"></i><div class="empty-title">Nenhuma transação ainda</div><div class="empty-desc">Clique em "Nova Transação" para começar a registrar</div></div>`;
+      } else {
+        lista.innerHTML = ts.slice(0, 5).map(t => `
+          <div class="trans-item">
+            <div class="trans-ico ${t.tipo==='entrada'?'ico-e':'ico-s'}"><i class="ti ti-arrow-${t.tipo==='entrada'?'up':'down'}"></i></div>
+            <div><div class="trans-desc">${t.descricao || t.categoria_nome}</div><div class="trans-cat">${t.categoria_nome} · ${formatarData(t.data)}</div></div>
+            <div class="trans-right">
+              <div class="trans-val ${t.tipo==='entrada'?'valor-entrada':'valor-saida'}">${t.tipo==='entrada'?'+':'-'}${formatarMoeda(t.valor)}</div>
+              <span class="badge ${t.tipo==='entrada'?'badge-entrada':'badge-saida'}">${t.tipo==='entrada'?'↑ Entrada':'↓ Saída'}</span>
+            </div>
+          </div>`).join('');
+      }
+    }
+    if (resCat.ok) document.getElementById('total-categorias').textContent = resCat.data.dados.categorias.length;
+    const metas = JSON.parse(localStorage.getItem('mt_metas') || '[]');
+    document.getElementById('total-metas').textContent = metas.length;
+  }
+  carregar();
+</script>
+</body>
+</html>

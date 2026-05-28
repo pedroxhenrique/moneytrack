@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoneyTrack — Criar Conta</title>
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    body { background: var(--fundo); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: var(--gap-md); }
+    .auth-wrap { width: 100%; max-width: 400px; }
+    .auth-logo { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: var(--gap-xl); }
+    .auth-logo-icon { width: 44px; height: 44px; background: var(--azul); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; box-shadow: var(--sombra-azul); }
+    .auth-logo-icon i { font-size: 22px; color: #fff; }
+    .auth-logo-text { font-size: var(--text-2xl); font-weight: 800; color: var(--texto-principal); letter-spacing: -0.5px; }
+    .auth-logo-text span { color: var(--azul); }
+    .auth-card { background: var(--surface); border: 1px solid var(--borda); border-radius: var(--radius-xl); padding: var(--gap-xl); box-shadow: var(--sombra-md); }
+    .auth-title { font-size: var(--text-2xl); font-weight: 800; color: var(--texto-principal); margin-bottom: 4px; }
+    .auth-subtitle { font-size: var(--text-sm); color: var(--texto-muted); margin-bottom: var(--gap-xl); }
+    .btn-auth { width: 100%; padding: 13px; font-size: var(--text-base); margin-top: var(--gap-sm); }
+    .auth-link { text-align: center; margin-top: var(--gap-lg); font-size: var(--text-sm); color: var(--texto-muted); }
+    .auth-link a { color: var(--azul-escuro); font-weight: 600; }
+    .cats-info { background: var(--azul-claro); border: 1px solid var(--azul-medio); border-radius: var(--radius-md); padding: var(--gap-md); margin-top: var(--gap-md); }
+    .cats-info p { font-size: var(--text-xs); color: var(--azul-escuro); font-weight: 700; margin-bottom: 8px; }
+    .cats-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+    .cat-tag { background: var(--surface); color: var(--azul-escuro); border-radius: var(--radius-full); padding: 2px 9px; font-size: 11px; border: 1px solid var(--azul-medio); font-weight: 500; }
+    .hint { font-size: 11px; color: var(--texto-muted); margin-top: 3px; }
+  </style>
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-logo">
+    <div class="auth-logo-icon"><i class="ti ti-trending-up"></i></div>
+    <div class="auth-logo-text">Money<span>Track</span></div>
+  </div>
+  <div class="auth-card">
+    <h1 class="auth-title">Criar conta</h1>
+    <p class="auth-subtitle">Comece a controlar suas finanças hoje</p>
+    <div id="alerta" class="alert alert-hidden"></div>
+    <form id="form-cadastro">
+      <div class="form-group">
+        <label class="form-label">Nome completo</label>
+        <input class="form-input" type="text" id="nome" placeholder="Seu nome completo" required autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">E-mail</label>
+        <input class="form-input" type="email" id="email" placeholder="seu@email.com" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Senha</label>
+        <div class="input-group">
+          <input class="form-input" type="password" id="senha" placeholder="Mínimo 6 caracteres" required style="padding-right:44px">
+          <button type="button" class="input-toggle" onclick="toggleSenha()"><i class="ti ti-eye" id="eye-icon"></i></button>
+        </div>
+        <span class="hint">Mínimo 6 caracteres</span>
+      </div>
+      <div class="cats-info">
+        <p><i class="ti ti-sparkles" style="font-size:14px;vertical-align:-2px"></i> Categorias criadas automaticamente:</p>
+        <div class="cats-tags">
+          <span class="cat-tag">Alimentação</span><span class="cat-tag">Transporte</span>
+          <span class="cat-tag">Lazer</span><span class="cat-tag">Salário</span>
+          <span class="cat-tag">Moradia</span><span class="cat-tag">Saúde</span><span class="cat-tag">Outros</span>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-auth" id="btn-cadastro" style="margin-top:var(--gap-lg)">
+        <i class="ti ti-user-plus"></i> Criar conta grátis
+      </button>
+    </form>
+    <div class="auth-link">Já tem conta? <a href="../index.html">Entrar</a></div>
+  </div>
+</div>
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/utils.js"></script>
+<script>
+  if (localStorage.getItem('mt_token')) window.location.href = 'dashboard.html';
+  function toggleSenha() {
+    const i = document.getElementById('senha'), ic = document.getElementById('eye-icon');
+    i.type = i.type === 'password' ? 'text' : 'password';
+    ic.className = i.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off';
+  }
+  document.getElementById('form-cadastro').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-cadastro');
+    btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin .7s linear infinite"></i> Criando...';
+    const nome = document.getElementById('nome').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const senha = document.getElementById('senha').value;
+    if (senha.length < 6) { mostrarAlerta('alerta', 'A senha deve ter no mínimo 6 caracteres', 'erro'); btn.disabled = false; btn.innerHTML = '<i class="ti ti-user-plus"></i> Criar conta grátis'; return; }
+    try {
+      const res = await api.auth.cadastro({ nome, email, senha });
+      if (res && res.ok) { salvarLogin(res.data.dados.token, res.data.dados.usuario); window.location.href = 'dashboard.html'; }
+      else { mostrarAlerta('alerta', res?.data?.erros?.[0]?.mensagem || res?.data?.mensagem || 'Erro ao criar conta', 'erro'); btn.disabled = false; btn.innerHTML = '<i class="ti ti-user-plus"></i> Criar conta grátis'; }
+    } catch(err) { mostrarAlerta('alerta', 'Erro ao conectar. Verifique se o servidor está rodando.', 'erro'); btn.disabled = false; btn.innerHTML = '<i class="ti ti-user-plus"></i> Criar conta grátis'; }
+  });
+</script>
+</body>
+</html>

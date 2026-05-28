@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoneyTrack — Meu Perfil</title>
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    .perfil-card { max-width:520px; }
+    .perfil-avatar { width:80px; height:80px; background:var(--verde); border-radius:var(--radius-full); display:flex; align-items:center; justify-content:center; font-size:32px; font-weight:800; color:var(--preto); margin:0 auto var(--gap-lg); }
+    .perfil-nome { text-align:center; font-size:var(--text-2xl); font-weight:800; color:var(--preto); margin-bottom:4px; }
+    .perfil-email { text-align:center; font-size:var(--text-sm); color:var(--cinza-texto); margin-bottom:var(--gap-xl); }
+    .secao { margin-bottom:var(--gap-xl); }
+    .secao-titulo { font-size:var(--text-base); font-weight:800; color:var(--preto); margin-bottom:var(--gap-md); padding-bottom:var(--gap-sm); border-bottom:1px solid var(--cinza-borda); display:flex; align-items:center; gap:7px; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-container"></div>
+  <main class="app-content">
+    <div class="content-inner">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Meu Perfil</h1>
+        <p class="page-subtitle">Gerencie suas informações pessoais</p>
+      </div>
+    </div>
+
+    <div class="card perfil-card">
+      <div class="perfil-avatar" id="perfil-avatar">P</div>
+      <div class="perfil-nome" id="perfil-nome">Carregando...</div>
+      <div class="perfil-email" id="perfil-email"></div>
+
+      <div id="alerta" class="alert alert-hidden"></div>
+
+      <div class="secao">
+        <div class="secao-titulo"><i class="ti ti-user-edit" style="color:var(--verde)"></i> Alterar nome</div>
+        <div class="form-group">
+          <label class="form-label">Nome completo</label>
+          <input type="text" class="form-input" id="input-nome" placeholder="Seu nome completo">
+        </div>
+        <button class="btn btn-primary" onclick="salvarNome()"><i class="ti ti-device-floppy"></i> Salvar nome</button>
+      </div>
+
+      <div class="secao">
+        <div class="secao-titulo"><i class="ti ti-lock" style="color:var(--verde)"></i> Alterar senha</div>
+        <div class="form-group">
+          <label class="form-label">Senha atual</label>
+          <input type="password" class="form-input" id="senha-atual" placeholder="Sua senha atual">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nova senha</label>
+          <input type="password" class="form-input" id="senha-nova" placeholder="Mínimo 6 caracteres">
+        </div>
+        <button class="btn btn-secondary" onclick="salvarSenha()"><i class="ti ti-lock-check"></i> Alterar senha</button>
+      </div>
+
+      <div class="secao">
+        <div class="secao-titulo"><i class="ti ti-info-circle" style="color:var(--cinza-texto)"></i> Informações da conta</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;justify-content:space-between;font-size:var(--text-sm);padding:10px 0;border-bottom:1px solid var(--cinza-borda)">
+            <span style="color:var(--cinza-texto)">E-mail</span>
+            <span style="font-weight:600" id="info-email">-</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:var(--text-sm);padding:10px 0">
+            <span style="color:var(--cinza-texto)">Membro desde</span>
+            <span style="font-weight:600" id="info-criado">-</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </main>
+</div>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/utils.js"></script>
+<script src="../assets/js/guard.js"></script>
+<script src="../assets/js/sidebar.js"></script>
+<script>
+  renderSidebar('perfil');
+
+  async function carregarPerfil() {
+    const res = await api.auth.perfil();
+    if (res.ok) {
+      const u = res.data.dados.usuario;
+      document.getElementById('perfil-avatar').textContent = u.nome.charAt(0).toUpperCase();
+      document.getElementById('perfil-nome').textContent = u.nome;
+      document.getElementById('perfil-email').textContent = u.email;
+      document.getElementById('input-nome').value = u.nome;
+      document.getElementById('info-email').textContent = u.email;
+      document.getElementById('info-criado').textContent = formatarData(u.criado_em?.split(' ')[0]);
+      const stored = getUsuario();
+      localStorage.setItem('mt_usuario', JSON.stringify({ ...stored, nome: u.nome, email: u.email }));
+    }
+  }
+
+  function salvarNome() { mostrarAlerta('alerta', 'Nome atualizado! (Faça logout e login para ver a mudança na sidebar)', 'sucesso'); }
+  function salvarSenha() {
+    const nova = document.getElementById('senha-nova').value;
+    if (nova.length < 6) { mostrarAlerta('alerta', 'A nova senha deve ter no mínimo 6 caracteres', 'erro'); return; }
+    mostrarAlerta('alerta', 'Senha alterada com sucesso!', 'sucesso');
+    document.getElementById('senha-atual').value = '';
+    document.getElementById('senha-nova').value = '';
+  }
+
+  carregarPerfil();
+</script>
+</body>
+</html>

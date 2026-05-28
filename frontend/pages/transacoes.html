@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoneyTrack — Transações</title>
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    .saldo-bar { display:grid; grid-template-columns:repeat(3,1fr); gap:var(--gap-md); margin-bottom:var(--gap-lg); }
+    .saldo-mini { background:var(--branco); border:1px solid var(--cinza-borda); border-radius:var(--radius-lg); padding:var(--gap-md) var(--gap-lg); }
+    .sm-label { font-size:11px; color:var(--cinza-texto); font-weight:600; text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px; display:flex; align-items:center; gap:5px; }
+    .sm-val { font-size:var(--text-xl); font-weight:800; }
+    .filtros-card { background:var(--branco); border:1px solid var(--cinza-borda); border-radius:var(--radius-lg); padding:var(--gap-lg); margin-bottom:var(--gap-lg); }
+    .filtros-title { font-size:var(--text-sm); font-weight:700; color:var(--preto); margin-bottom:var(--gap-md); display:flex; align-items:center; gap:6px; }
+    .filtros-grid { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:var(--gap-md); align-items:end; }
+    .acoes-cell { display:flex; gap:5px; }
+    @media(max-width:900px) { .filtros-grid { grid-template-columns:1fr 1fr; } .saldo-bar { grid-template-columns:1fr; } }
+    @media(max-width:480px) { .filtros-grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-container"></div>
+  <main class="app-content">
+    <div class="content-inner">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Transações</h1>
+        <p class="page-subtitle">Gerencie suas entradas e saídas financeiras</p>
+      </div>
+      <button class="btn btn-primary btn-lg" onclick="abrirModal()">
+        <i class="ti ti-plus"></i> Nova Transação
+      </button>
+    </div>
+
+    <div class="saldo-bar">
+      <div class="saldo-mini">
+        <div class="sm-label"><i class="ti ti-wallet" style="color:var(--verde)"></i> Saldo atual</div>
+        <div class="sm-val" id="saldo-atual" style="color:var(--verde)">R$ 0,00</div>
+      </div>
+      <div class="saldo-mini">
+        <div class="sm-label"><i class="ti ti-arrow-up" style="color:var(--verde)"></i> Entradas</div>
+        <div class="sm-val valor-entrada" id="total-entradas">R$ 0,00</div>
+      </div>
+      <div class="saldo-mini">
+        <div class="sm-label"><i class="ti ti-arrow-down" style="color:var(--saida)"></i> Saídas</div>
+        <div class="sm-val valor-saida" id="total-saidas">R$ 0,00</div>
+      </div>
+    </div>
+
+    <div class="filtros-card">
+      <div class="filtros-title"><i class="ti ti-adjustments-horizontal"></i> Filtros</div>
+      <div class="filtros-grid">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Data inicial</label>
+          <input type="date" class="form-input" id="filtro-inicio">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Data final</label>
+          <input type="date" class="form-input" id="filtro-fim">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Categoria</label>
+          <select class="form-select" id="filtro-categoria">
+            <option value="">Todas as categorias</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-primary" onclick="aplicarFiltros()"><i class="ti ti-search"></i> Filtrar</button>
+          <button class="btn btn-secondary" onclick="limparFiltros()" title="Limpar filtros"><i class="ti ti-x"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0">
+      <div id="lista-transacoes"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+    </div>
+  </main>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="fecharModalFora(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-titulo">Nova Transação</div>
+      <button class="modal-fechar" onclick="fecharModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="alerta-modal" class="alert alert-hidden"></div>
+    <div class="tipo-radio">
+      <button type="button" class="tipo-btn entrada-ativo" id="btn-entrada" onclick="selecionarTipo('entrada')">
+        <i class="ti ti-arrow-up"></i> Entrada
+      </button>
+      <button type="button" class="tipo-btn" id="btn-saida" onclick="selecionarTipo('saida')">
+        <i class="ti ti-arrow-down"></i> Saída
+      </button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Valor (R$)</label>
+        <input type="number" class="form-input" id="input-valor" placeholder="0,00" min="0.01" step="0.01">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data</label>
+        <input type="date" class="form-input" id="input-data">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Categoria</label>
+      <select class="form-select" id="input-categoria"><option value="">Selecione uma categoria</option></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descrição <span style="color:var(--cinza-texto);font-weight:400">(opcional)</span></label>
+      <input type="text" class="form-input" id="input-descricao" placeholder="Ex: Almoço no restaurante...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar" onclick="salvarTransacao()"><i class="ti ti-device-floppy"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/utils.js"></script>
+<script src="../assets/js/guard.js"></script>
+<script src="../assets/js/sidebar.js"></script>
+<script>
+  renderSidebar('transacoes');
+  let editandoId = null, tipoSelecionado = 'entrada', categorias = [];
+
+  async function carregar() {
+    await carregarSaldo();
+    await carregarCategorias();
+    await carregarTransacoes();
+  }
+
+  async function carregarSaldo() {
+    const res = await api.saldo.obter();
+    if (res.ok) {
+      const { saldo, totalEntradas, totalSaidas } = res.data.dados;
+      document.getElementById('saldo-atual').textContent = formatarMoeda(saldo);
+      document.getElementById('saldo-atual').style.color = saldo < 0 ? 'var(--saida)' : 'var(--verde)';
+      document.getElementById('total-entradas').textContent = formatarMoeda(totalEntradas);
+      document.getElementById('total-saidas').textContent = formatarMoeda(totalSaidas);
+    }
+  }
+
+  async function carregarCategorias() {
+    const res = await api.categorias.listar();
+    if (res.ok) {
+      categorias = res.data.dados.categorias;
+      const opts = categorias.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+      document.getElementById('filtro-categoria').innerHTML = '<option value="">Todas as categorias</option>' + opts;
+      document.getElementById('input-categoria').innerHTML = '<option value="">Selecione uma categoria</option>' + opts;
+    }
+  }
+
+  async function carregarTransacoes(filtros = {}) {
+    const res = await api.transacoes.listar(filtros);
+    const lista = document.getElementById('lista-transacoes');
+    if (!res.ok) { lista.innerHTML = '<div class="empty-state"><i class="ti ti-wifi-off empty-icon"></i><div class="empty-title">Erro ao carregar</div></div>'; return; }
+    const ts = res.data.dados.transacoes;
+    if (ts.length === 0) {
+      lista.innerHTML = `<div class="empty-state"><i class="ti ti-receipt-off empty-icon"></i><div class="empty-title">Nenhuma transação encontrada</div><div class="empty-desc">Clique em "Nova Transação" para começar a registrar</div></div>`;
+      return;
+    }
+    lista.innerHTML = `<div class="table-wrapper"><table>
+      <thead><tr><th>Tipo</th><th>Descrição</th><th>Categoria</th><th>Data</th><th>Valor</th><th style="text-align:center">Ações</th></tr></thead>
+      <tbody>${ts.map(t => `<tr>
+        <td><span class="badge ${t.tipo==='entrada'?'badge-entrada':'badge-saida'}">${t.tipo==='entrada'?'↑ Entrada':'↓ Saída'}</span></td>
+        <td style="font-weight:500">${t.descricao || '-'}</td>
+        <td style="color:var(--cinza-texto)">${t.categoria_nome}</td>
+        <td style="color:var(--cinza-texto)">${formatarData(t.data)}</td>
+        <td class="${t.tipo==='entrada'?'valor-entrada':'valor-saida'}">${t.tipo==='entrada'?'+':'-'}${formatarMoeda(t.valor)}</td>
+        <td><div class="acoes-cell" style="justify-content:center">
+          <button class="btn btn-secondary btn-sm btn-icon" onclick="editarTransacao(${t.id})" title="Editar"><i class="ti ti-pencil"></i></button>
+          <button class="btn btn-danger btn-sm btn-icon" onclick="excluirTransacao(${t.id})" title="Excluir"><i class="ti ti-trash"></i></button>
+        </div></td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  }
+
+  function aplicarFiltros() {
+    carregarTransacoes({ dataInicio: document.getElementById('filtro-inicio').value, dataFim: document.getElementById('filtro-fim').value, categoriaId: document.getElementById('filtro-categoria').value });
+  }
+
+  function limparFiltros() {
+    document.getElementById('filtro-inicio').value = '';
+    document.getElementById('filtro-fim').value = '';
+    document.getElementById('filtro-categoria').value = '';
+    carregarTransacoes();
+  }
+
+  function abrirModal(t = null) {
+    editandoId = t ? t.id : null;
+    document.getElementById('modal-titulo').textContent = t ? 'Editar Transação' : 'Nova Transação';
+    document.getElementById('input-valor').value = t ? t.valor : '';
+    document.getElementById('input-data').value = t ? t.data : hoje();
+    document.getElementById('input-descricao').value = t ? (t.descricao || '') : '';
+    document.getElementById('input-categoria').value = t ? t.categoria_id : '';
+    document.getElementById('alerta-modal').classList.add('alert-hidden');
+    selecionarTipo(t ? t.tipo : 'entrada');
+    document.getElementById('modal-overlay').classList.add('ativo');
+  }
+
+  function fecharModal() { document.getElementById('modal-overlay').classList.remove('ativo'); editandoId = null; }
+  function fecharModalFora(e) { if (e.target === document.getElementById('modal-overlay')) fecharModal(); }
+
+  function selecionarTipo(tipo) {
+    tipoSelecionado = tipo;
+    document.getElementById('btn-entrada').className = `tipo-btn${tipo==='entrada'?' entrada-ativo':''}`;
+    document.getElementById('btn-saida').className = `tipo-btn${tipo==='saida'?' saida-ativo':''}`;
+  }
+
+  async function salvarTransacao() {
+    const valor = parseFloat(document.getElementById('input-valor').value);
+    const data = document.getElementById('input-data').value;
+    const categoriaId = parseInt(document.getElementById('input-categoria').value);
+    const descricao = document.getElementById('input-descricao').value.trim();
+    if (!valor || valor < 0.01) { mostrarAlerta('alerta-modal', 'Informe um valor maior que R$ 0,01', 'erro'); return; }
+    if (!data) { mostrarAlerta('alerta-modal', 'Informe a data', 'erro'); return; }
+    if (!categoriaId) { mostrarAlerta('alerta-modal', 'Selecione uma categoria', 'erro'); return; }
+    const btn = document.getElementById('btn-salvar');
+    btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin .7s linear infinite"></i> Salvando...';
+    try {
+      const dados = { tipo: tipoSelecionado, valor, data, categoriaId, descricao };
+      const res = editandoId ? await api.transacoes.atualizar(editandoId, dados) : await api.transacoes.criar(dados);
+      if (res.ok) { fecharModal(); await carregar(); }
+      else { mostrarAlerta('alerta-modal', res.data.erros?.[0]?.mensagem || res.data.mensagem || 'Erro ao salvar', 'erro'); }
+    } catch(err) { mostrarAlerta('alerta-modal', 'Erro de conexão', 'erro'); }
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-device-floppy"></i> Salvar';
+  }
+
+  async function editarTransacao(id) {
+    const res = await api.transacoes.listar();
+    if (res.ok) { const t = res.data.dados.transacoes.find(t => t.id === id); if (t) abrirModal(t); }
+  }
+
+  async function excluirTransacao(id) {
+    if (!confirmarExclusao('Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.')) return;
+    const res = await api.transacoes.excluir(id);
+    if (res.ok) await carregar();
+    else alert(res.data.mensagem || 'Erro ao excluir');
+  }
+
+  carregar();
+</script>
+</body>
+</html>

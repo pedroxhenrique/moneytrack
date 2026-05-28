@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoneyTrack — Metas</title>
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    .metas-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:var(--gap-md); }
+    .meta-card { background:var(--branco); border:1px solid var(--cinza-borda); border-radius:var(--radius-lg); padding:var(--gap-lg); transition:var(--transicao); }
+    .meta-card:hover { box-shadow:var(--sombra-md); }
+    .meta-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:var(--gap-md); }
+    .meta-categoria { font-size:var(--text-base); font-weight:700; color:var(--preto); }
+    .meta-periodo { font-size:11px; color:var(--cinza-texto); margin-top:2px; }
+    .meta-acoes { display:flex; gap:4px; }
+    .meta-valores { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:8px; }
+    .meta-gasto { font-size:var(--text-xl); font-weight:800; }
+    .meta-limite { font-size:var(--text-sm); color:var(--cinza-texto); }
+    .meta-pct { font-size:11px; font-weight:700; }
+    .pct-ok { color:var(--verde); }
+    .pct-aviso { color:var(--aviso); }
+    .pct-danger { color:var(--saida); }
+    .status-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:var(--radius-full); font-size:10px; font-weight:700; margin-top:var(--gap-sm); }
+    .status-ok { background:var(--verde-claro); color:var(--verde-escuro); }
+    .status-aviso { background:#FFF3E0; color:#E65100; }
+    .status-danger { background:var(--saida-claro); color:var(--saida); }
+    .empty-banner { background:var(--verde-alpha); border:1px solid rgba(0,200,83,.15); border-radius:var(--radius-lg); padding:var(--gap-xl); text-align:center; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-container"></div>
+  <main class="app-content">
+    <div class="content-inner">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Metas de Gastos</h1>
+        <p class="page-subtitle">Defina limites por categoria e acompanhe seus gastos</p>
+      </div>
+      <button class="btn btn-primary btn-lg" onclick="abrirModal()"><i class="ti ti-plus"></i> Nova Meta</button>
+    </div>
+
+    <div id="alerta" class="alert alert-hidden"></div>
+    <div id="lista-metas"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+  </main>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="fecharModalFora(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-titulo">Nova Meta</div>
+      <button class="modal-fechar" onclick="fecharModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="alerta-modal" class="alert alert-hidden"></div>
+    <div class="form-group">
+      <label class="form-label">Categoria</label>
+      <select class="form-select" id="input-categoria"><option value="">Selecione...</option></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Limite mensal (R$)</label>
+      <input type="number" class="form-input" id="input-limite" placeholder="Ex: 500,00" min="1" step="0.01">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar" onclick="salvarMeta()"><i class="ti ti-device-floppy"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/utils.js"></script>
+<script src="../assets/js/guard.js"></script>
+<script src="../assets/js/sidebar.js"></script>
+<script>
+  renderSidebar('metas');
+  let editandoId = null;
+  const STORAGE_KEY = 'mt_metas';
+
+  function getMetas() { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  function salvarMetas(metas) { localStorage.setItem(STORAGE_KEY, JSON.stringify(metas)); }
+
+  async function carregar() {
+    const [resCats, resTransacoes] = await Promise.all([api.categorias.listar(), api.transacoes.listar({ dataInicio: primeiroDiaMes(), dataFim: hoje() })]);
+    const cats = resCats.ok ? resCats.data.dados.categorias : [];
+    const transacoes = resTransacoes.ok ? resTransacoes.data.dados.transacoes : [];
+    const metas = getMetas();
+
+    const catSelect = document.getElementById('input-categoria');
+    catSelect.innerHTML = '<option value="">Selecione...</option>' + cats.map(c => `<option value="${c.id}" data-nome="${c.nome}">${c.nome}</option>`).join('');
+
+    const lista = document.getElementById('lista-metas');
+    if (metas.length === 0) {
+      lista.innerHTML = `<div class="empty-banner">
+        <i class="ti ti-target" style="font-size:40px;color:var(--verde);margin-bottom:var(--gap-md);display:block"></i>
+        <div style="font-size:var(--text-lg);font-weight:700;color:var(--preto);margin-bottom:6px">Nenhuma meta definida</div>
+        <div style="font-size:var(--text-sm);color:var(--cinza-texto)">Crie metas de gasto por categoria para controlar melhor seu dinheiro</div>
+      </div>`;
+      return;
+    }
+
+    lista.innerHTML = `<div class="metas-grid">${metas.map(meta => {
+      const gasto = transacoes.filter(t => t.tipo === 'saida' && t.categoria_id === meta.categoriaId).reduce((s, t) => s + t.valor, 0);
+      const pct = meta.limite > 0 ? Math.min((gasto / meta.limite) * 100, 100) : 0;
+      const corBarra = pct >= 90 ? 'var(--saida)' : pct >= 70 ? 'var(--aviso)' : 'var(--verde)';
+      const classPct = pct >= 90 ? 'pct-danger' : pct >= 70 ? 'pct-aviso' : 'pct-ok';
+      const statusClass = pct >= 90 ? 'status-danger' : pct >= 70 ? 'status-aviso' : 'status-ok';
+      const statusTxt = pct >= 90 ? '⚠️ Limite atingido' : pct >= 70 ? '⚡ Atenção' : '✅ Dentro do limite';
+      return `<div class="meta-card">
+        <div class="meta-header">
+          <div>
+            <div class="meta-categoria">${meta.categoriaNome}</div>
+            <div class="meta-periodo">Mês atual (${new Date().toLocaleDateString('pt-BR',{month:'long'})})</div>
+          </div>
+          <div class="meta-acoes">
+            <button class="btn btn-secondary btn-sm btn-icon" onclick="editarMeta('${meta.id}')"><i class="ti ti-pencil"></i></button>
+            <button class="btn btn-danger btn-sm btn-icon" onclick="excluirMeta('${meta.id}')"><i class="ti ti-trash"></i></button>
+          </div>
+        </div>
+        <div class="meta-valores">
+          <div>
+            <div class="meta-gasto ${classPct}">${formatarMoeda(gasto)}</div>
+            <div class="meta-limite">de ${formatarMoeda(meta.limite)}</div>
+          </div>
+          <div class="meta-pct ${classPct}">${pct.toFixed(0)}%</div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${corBarra}"></div></div>
+        <span class="status-badge ${statusClass}">${statusTxt}</span>
+      </div>`;
+    }).join('')}</div>`;
+  }
+
+  function abrirModal(id = null) {
+    editandoId = id;
+    document.getElementById('modal-titulo').textContent = id ? 'Editar Meta' : 'Nova Meta';
+    document.getElementById('alerta-modal').classList.add('alert-hidden');
+    if (id) {
+      const meta = getMetas().find(m => m.id === id);
+      if (meta) { document.getElementById('input-categoria').value = meta.categoriaId; document.getElementById('input-limite').value = meta.limite; }
+    } else {
+      document.getElementById('input-categoria').value = '';
+      document.getElementById('input-limite').value = '';
+    }
+    document.getElementById('modal-overlay').classList.add('ativo');
+  }
+
+  function fecharModal() { document.getElementById('modal-overlay').classList.remove('ativo'); editandoId = null; }
+  function fecharModalFora(e) { if (e.target === document.getElementById('modal-overlay')) fecharModal(); }
+
+  function editarMeta(id) { abrirModal(id); }
+
+  async function salvarMeta() {
+    const sel = document.getElementById('input-categoria');
+    const categoriaId = parseInt(sel.value);
+    const categoriaNome = sel.options[sel.selectedIndex]?.dataset?.nome || '';
+    const limite = parseFloat(document.getElementById('input-limite').value);
+    if (!categoriaId) { mostrarAlerta('alerta-modal', 'Selecione uma categoria', 'erro'); return; }
+    if (!limite || limite < 1) { mostrarAlerta('alerta-modal', 'Informe um limite válido', 'erro'); return; }
+    const metas = getMetas();
+    if (!editandoId && metas.find(m => m.categoriaId === categoriaId)) { mostrarAlerta('alerta-modal', 'Já existe uma meta para esta categoria', 'erro'); return; }
+    if (editandoId) {
+      const idx = metas.findIndex(m => m.id === editandoId);
+      if (idx > -1) metas[idx] = { ...metas[idx], categoriaId, categoriaNome, limite };
+    } else {
+      metas.push({ id: Date.now().toString(), categoriaId, categoriaNome, limite });
+    }
+    salvarMetas(metas);
+    fecharModal();
+    await carregar();
+    mostrarAlerta('alerta', `Meta ${editandoId ? 'atualizada' : 'criada'} com sucesso!`, 'sucesso');
+  }
+
+  async function excluirMeta(id) {
+    if (!confirmarExclusao('Excluir esta meta?')) return;
+    const metas = getMetas().filter(m => m.id !== id);
+    salvarMetas(metas);
+    await carregar();
+    mostrarAlerta('alerta', 'Meta excluída!', 'sucesso');
+  }
+
+  carregar();
+</script>
+</body>
+</html>

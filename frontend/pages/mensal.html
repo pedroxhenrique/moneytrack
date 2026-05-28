@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoneyTrack — Resumo Mensal</title>
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    .mes-nav { display:flex; align-items:center; gap:var(--gap-md); margin-bottom:var(--gap-xl); background:var(--branco); border:1px solid var(--cinza-borda); border-radius:var(--radius-lg); padding:var(--gap-md) var(--gap-lg); }
+    .mes-atual { font-size:var(--text-xl); font-weight:800; color:var(--preto); flex:1; text-align:center; letter-spacing:-.3px; }
+    .resumo-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:var(--gap-md); margin-bottom:var(--gap-lg); }
+    .resumo-card { background:var(--branco); border:1px solid var(--cinza-borda); border-radius:var(--radius-lg); padding:var(--gap-lg); }
+    .rc-label { font-size:11px; color:var(--cinza-texto); font-weight:700; text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px; display:flex; align-items:center; gap:5px; }
+    .rc-valor { font-size:var(--text-2xl); font-weight:800; letter-spacing:-.3px; }
+    .rc-comp { font-size:11px; margin-top:4px; display:flex; align-items:center; gap:3px; font-weight:600; }
+    .comp-up { color:var(--saida); }
+    .comp-down { color:var(--verde); }
+    .comp-eq { color:var(--cinza-texto); }
+    .trans-do-mes { background:var(--branco); border:1px solid var(--cinza-borda); border-radius:var(--radius-lg); }
+    .trans-header { padding:var(--gap-lg); border-bottom:1px solid var(--cinza-borda); font-size:var(--text-base); font-weight:800; color:var(--preto); display:flex; align-items:center; gap:7px; }
+    @media(max-width:768px) { .resumo-grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-container"></div>
+  <main class="app-content">
+    <div class="content-inner">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Resumo Mensal</h1>
+        <p class="page-subtitle">Compare seus resultados mês a mês</p>
+      </div>
+    </div>
+
+    <div class="mes-nav">
+      <button class="btn btn-secondary btn-sm btn-icon" onclick="mudarMes(-1)"><i class="ti ti-chevron-left"></i></button>
+      <div class="mes-atual" id="mes-label">Carregando...</div>
+      <button class="btn btn-secondary btn-sm btn-icon" onclick="mudarMes(1)" id="btn-prox"><i class="ti ti-chevron-right"></i></button>
+    </div>
+
+    <div class="resumo-grid">
+      <div class="resumo-card">
+        <div class="rc-label"><i class="ti ti-arrow-up" style="color:var(--verde)"></i> Entradas</div>
+        <div class="rc-valor valor-entrada" id="res-entradas">R$ 0,00</div>
+        <div class="rc-comp" id="comp-entradas"></div>
+      </div>
+      <div class="resumo-card">
+        <div class="rc-label"><i class="ti ti-arrow-down" style="color:var(--saida)"></i> Saídas</div>
+        <div class="rc-valor valor-saida" id="res-saidas">R$ 0,00</div>
+        <div class="rc-comp" id="comp-saidas"></div>
+      </div>
+      <div class="resumo-card">
+        <div class="rc-label"><i class="ti ti-wallet" style="color:var(--verde)"></i> Saldo</div>
+        <div class="rc-valor" id="res-saldo" style="color:var(--verde)">R$ 0,00</div>
+        <div class="rc-comp" id="comp-saldo"></div>
+      </div>
+    </div>
+
+    <div class="trans-do-mes">
+      <div class="trans-header"><i class="ti ti-receipt" style="color:var(--verde)"></i> Transações do mês</div>
+      <div id="lista-mensal"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+    </div>
+  </main>
+</div>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/utils.js"></script>
+<script src="../assets/js/guard.js"></script>
+<script src="../assets/js/sidebar.js"></script>
+<script>
+  renderSidebar('mensal');
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  let dataAtual = new Date();
+
+  function primeiroDia(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`; }
+  function ultimoDia(d) { const u = new Date(d.getFullYear(), d.getMonth()+1, 0); return `${u.getFullYear()}-${String(u.getMonth()+1).padStart(2,'0')}-${String(u.getDate()).padStart(2,'0')}`; }
+
+  function mudarMes(dir) {
+    dataAtual = new Date(dataAtual.getFullYear(), dataAtual.getMonth() + dir, 1);
+    const agora = new Date();
+    document.getElementById('btn-prox').disabled = dataAtual.getFullYear() === agora.getFullYear() && dataAtual.getMonth() >= agora.getMonth();
+    carregar();
+  }
+
+  function compTexto(atual, anterior, inverso = false) {
+    if (anterior === 0) return '';
+    const diff = ((atual - anterior) / anterior * 100).toFixed(0);
+    const subiu = atual > anterior;
+    const bom = inverso ? !subiu : subiu;
+    return `<i class="ti ti-arrow-${subiu?'up':'down'}" style="font-size:12px"></i> <span class="${bom?'comp-down':'comp-up'}">${Math.abs(diff)}% vs mês anterior</span>`;
+  }
+
+  async function carregar() {
+    document.getElementById('mes-label').textContent = `${meses[dataAtual.getMonth()]} ${dataAtual.getFullYear()}`;
+    const inicio = primeiroDia(dataAtual);
+    const fim = ultimoDia(dataAtual);
+    const dAnterior = new Date(dataAtual.getFullYear(), dataAtual.getMonth()-1, 1);
+    const inicioAnt = primeiroDia(dAnterior);
+    const fimAnt = ultimoDia(dAnterior);
+
+    const [resAtual, resAnterior] = await Promise.all([
+      api.transacoes.listar({ dataInicio: inicio, dataFim: fim }),
+      api.transacoes.listar({ dataInicio: inicioAnt, dataFim: fimAnt })
+    ]);
+
+    const calcular = ts => ({
+      entradas: ts.filter(t => t.tipo==='entrada').reduce((s,t) => s+t.valor, 0),
+      saidas: ts.filter(t => t.tipo==='saida').reduce((s,t) => s+t.valor, 0),
+    });
+
+    const a = resAtual.ok ? calcular(resAtual.data.dados.transacoes) : {entradas:0,saidas:0};
+    const ant = resAnterior.ok ? calcular(resAnterior.data.dados.transacoes) : {entradas:0,saidas:0};
+
+    document.getElementById('res-entradas').textContent = formatarMoeda(a.entradas);
+    document.getElementById('res-saidas').textContent = formatarMoeda(a.saidas);
+    const saldo = a.entradas - a.saidas;
+    document.getElementById('res-saldo').textContent = formatarMoeda(saldo);
+    document.getElementById('res-saldo').style.color = saldo < 0 ? 'var(--saida)' : 'var(--verde)';
+    document.getElementById('comp-entradas').innerHTML = compTexto(a.entradas, ant.entradas);
+    document.getElementById('comp-saidas').innerHTML = compTexto(a.saidas, ant.saidas, true);
+    document.getElementById('comp-saldo').innerHTML = compTexto(saldo, ant.entradas - ant.saidas);
+
+    if (resAtual.ok) {
+      const ts = resAtual.data.dados.transacoes;
+      const lista = document.getElementById('lista-mensal');
+      if (ts.length === 0) {
+        lista.innerHTML = `<div class="empty-state"><i class="ti ti-calendar-off empty-icon"></i><div class="empty-title">Sem transações neste mês</div></div>`;
+        return;
+      }
+      lista.innerHTML = `<div class="table-wrapper" style="border:none;border-radius:0"><table>
+        <thead><tr><th>Tipo</th><th>Descrição</th><th>Categoria</th><th>Data</th><th>Valor</th></tr></thead>
+        <tbody>${ts.map(t => `<tr>
+          <td><span class="badge ${t.tipo==='entrada'?'badge-entrada':'badge-saida'}">${t.tipo==='entrada'?'↑ Entrada':'↓ Saída'}</span></td>
+          <td style="font-weight:500">${t.descricao||'-'}</td>
+          <td style="color:var(--cinza-texto)">${t.categoria_nome}</td>
+          <td style="color:var(--cinza-texto)">${formatarData(t.data)}</td>
+          <td class="${t.tipo==='entrada'?'valor-entrada':'valor-saida'}">${t.tipo==='entrada'?'+':'-'}${formatarMoeda(t.valor)}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>`;
+    }
+  }
+
+  const agora = new Date();
+  document.getElementById('btn-prox').disabled = dataAtual.getFullYear() === agora.getFullYear() && dataAtual.getMonth() >= agora.getMonth();
+  carregar();
+</script>
+</body>
+</html>

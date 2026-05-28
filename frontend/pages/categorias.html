@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoneyTrack — Categorias</title>
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    .cats-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:var(--gap-md); }
+    .cat-card { background:var(--branco); border:1px solid var(--cinza-borda); border-radius:var(--radius-lg); padding:var(--gap-lg); display:flex; align-items:center; justify-content:space-between; transition:var(--transicao); }
+    .cat-card:hover { border-color:var(--verde); box-shadow:var(--sombra-md); transform:translateY(-2px); }
+    .cat-left { display:flex; align-items:center; gap:var(--gap-md); }
+    .cat-icon { width:44px; height:44px; background:var(--verde-claro); border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; font-size:20px; color:var(--verde); flex-shrink:0; }
+    .cat-nome { font-size:var(--text-base); font-weight:700; color:var(--preto); }
+    .cat-info { font-size:11px; color:var(--cinza-texto); margin-top:2px; }
+    .cat-acoes { display:flex; gap:5px; }
+    .info-banner { background:var(--verde-claro); border:1px solid rgba(0,200,83,.15); border-radius:var(--radius-md); padding:12px var(--gap-md); margin-bottom:var(--gap-lg); font-size:var(--text-sm); color:var(--verde-escuro); display:flex; align-items:center; gap:8px; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-container"></div>
+  <main class="app-content">
+    <div class="content-inner">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Categorias</h1>
+        <p class="page-subtitle">Organize suas transações por categoria</p>
+      </div>
+      <button class="btn btn-primary btn-lg" onclick="abrirModal()"><i class="ti ti-plus"></i> Nova Categoria</button>
+    </div>
+
+    <div class="info-banner"><i class="ti ti-info-circle" style="font-size:18px;flex-shrink:0"></i> 7 categorias padrão foram criadas automaticamente. Adicione novas ou edite as existentes.</div>
+    <div id="alerta" class="alert alert-hidden"></div>
+    <div id="lista-categorias"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+  </main>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="fecharModalFora(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-titulo">Nova Categoria</div>
+      <button class="modal-fechar" onclick="fecharModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="alerta-modal" class="alert alert-hidden"></div>
+    <div class="form-group">
+      <label class="form-label">Nome da categoria</label>
+      <input type="text" class="form-input" id="input-nome" placeholder="Ex: Farmácia, Academia, Pets...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar" onclick="salvarCategoria()"><i class="ti ti-device-floppy"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/utils.js"></script>
+<script src="../assets/js/guard.js"></script>
+<script src="../assets/js/sidebar.js"></script>
+<script>
+  renderSidebar('categorias');
+  let editandoId = null;
+  const iconesMapa = { 'Alimentação':'ti-tools-kitchen-2','Transporte':'ti-car','Lazer':'ti-device-gamepad-2','Salário':'ti-cash','Moradia':'ti-home','Saúde':'ti-heart-plus','Outros':'ti-package' };
+  const getIcone = n => iconesMapa[n] || 'ti-tag';
+
+  async function carregarCategorias() {
+    const res = await api.categorias.listar();
+    const lista = document.getElementById('lista-categorias');
+    if (!res.ok) { lista.innerHTML = '<div class="empty-state"><div class="empty-desc">Erro ao carregar</div></div>'; return; }
+    const cats = res.data.dados.categorias;
+    if (cats.length === 0) {
+      lista.innerHTML = `<div class="empty-state"><i class="ti ti-tag empty-icon"></i><div class="empty-title">Nenhuma categoria</div></div>`;
+      return;
+    }
+    lista.innerHTML = `<div class="cats-grid">${cats.map(c => `
+      <div class="cat-card">
+        <div class="cat-left">
+          <div class="cat-icon"><i class="ti ${getIcone(c.nome)}"></i></div>
+          <div>
+            <div class="cat-nome">${c.nome}</div>
+            <div class="cat-info">Criada em ${formatarData(c.criado_em?.split(' ')[0])}</div>
+          </div>
+        </div>
+        <div class="cat-acoes">
+          <button class="btn btn-secondary btn-sm btn-icon" onclick="editarCategoria(${c.id},'${c.nome.replace(/'/g,"\\'")}')"><i class="ti ti-pencil"></i></button>
+          <button class="btn btn-danger btn-sm btn-icon" onclick="excluirCategoria(${c.id},'${c.nome.replace(/'/g,"\\'")}')"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>`).join('')}</div>`;
+  }
+
+  function abrirModal(id=null, nome='') {
+    editandoId=id;
+    document.getElementById('modal-titulo').textContent = id ? 'Editar Categoria' : 'Nova Categoria';
+    document.getElementById('input-nome').value = nome;
+    document.getElementById('alerta-modal').classList.add('alert-hidden');
+    document.getElementById('modal-overlay').classList.add('ativo');
+    setTimeout(() => document.getElementById('input-nome').focus(), 100);
+  }
+
+  function fecharModal() { document.getElementById('modal-overlay').classList.remove('ativo'); editandoId=null; }
+  function fecharModalFora(e) { if (e.target===document.getElementById('modal-overlay')) fecharModal(); }
+  function editarCategoria(id,nome) { abrirModal(id,nome); }
+
+  async function salvarCategoria() {
+    const nome = document.getElementById('input-nome').value.trim();
+    if (!nome || nome.length < 2) { mostrarAlerta('alerta-modal','Nome deve ter pelo menos 2 caracteres','erro'); return; }
+    const btn = document.getElementById('btn-salvar');
+    btn.disabled=true; btn.innerHTML='<i class="ti ti-loader-2" style="animation:spin .7s linear infinite"></i> Salvando...';
+    try {
+      const res = editandoId ? await api.categorias.atualizar(editandoId,{nome}) : await api.categorias.criar({nome});
+      if (res.ok) { fecharModal(); await carregarCategorias(); mostrarAlerta('alerta',`Categoria ${editandoId?'atualizada':'criada'} com sucesso!`,'sucesso'); }
+      else { mostrarAlerta('alerta-modal', res.data.erros?.[0]?.mensagem || res.data.mensagem || 'Erro ao salvar','erro'); }
+    } catch(err) { mostrarAlerta('alerta-modal','Erro de conexão','erro'); }
+    btn.disabled=false; btn.innerHTML='<i class="ti ti-device-floppy"></i> Salvar';
+  }
+
+  async function excluirCategoria(id,nome) {
+    if (!confirmarExclusao(`Excluir a categoria "${nome}"?\n\nNão é possível excluir categorias com transações vinculadas.`)) return;
+    const res = await api.categorias.excluir(id);
+    if (res.ok) { await carregarCategorias(); mostrarAlerta('alerta','Categoria excluída com sucesso!','sucesso'); }
+    else mostrarAlerta('alerta', res.data.mensagem || 'Erro ao excluir','erro');
+  }
+
+  document.getElementById('input-nome')?.addEventListener('keydown', e => { if (e.key==='Enter') salvarCategoria(); });
+  carregarCategorias();
+</script>
+</body>
+</html>

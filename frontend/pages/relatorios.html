@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoneyTrack — Relatórios</title>
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    .filtros-rel { display:flex; gap:var(--gap-md); align-items:flex-end; flex-wrap:wrap; margin-bottom:var(--gap-xl); background:var(--branco); border:1px solid var(--cinza-borda); border-radius:var(--radius-lg); padding:var(--gap-lg); }
+    .filtros-rel .form-group { margin:0; flex:1; min-width:150px; }
+    .resumo-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:var(--gap-md); margin-bottom:var(--gap-lg); }
+    .resumo-card { background:var(--branco); border:1px solid var(--cinza-borda); border-radius:var(--radius-lg); padding:var(--gap-lg); }
+    .resumo-label { font-size:11px; color:var(--cinza-texto); font-weight:700; text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px; display:flex; align-items:center; gap:5px; }
+    .resumo-valor { font-size:var(--text-2xl); font-weight:800; letter-spacing:-.3px; }
+    .graficos-grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--gap-lg); margin-bottom:var(--gap-lg); }
+    .grafico-card { background:var(--branco); border:1px solid var(--cinza-borda); border-radius:var(--radius-lg); padding:var(--gap-lg); }
+    .grafico-titulo { font-size:var(--text-base); font-weight:700; color:var(--preto); margin-bottom:var(--gap-lg); display:flex; align-items:center; gap:7px; }
+    .cat-lista-item { display:flex; align-items:center; gap:var(--gap-md); padding:11px 0; border-bottom:1px solid var(--cinza-borda); }
+    .cat-lista-item:last-child { border-bottom:none; }
+    .cat-rank { width:26px; height:26px; border-radius:var(--radius-full); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; flex-shrink:0; background:var(--cinza-fundo); color:var(--cinza-texto); }
+    .cat-rank-1 { background:#FFD700; color:#7A6000; }
+    .cat-rank-2 { background:#C0C0C0; color:#444; }
+    .cat-rank-3 { background:#CD7F32; color:#fff; }
+    .cat-info-wrap { flex:1; min-width:0; }
+    .cat-nome-row { font-size:var(--text-sm); font-weight:700; color:var(--preto); margin-bottom:5px; }
+    .barra-bg { height:5px; background:var(--cinza-borda); border-radius:var(--radius-full); overflow:hidden; }
+    .barra-fill { height:100%; background:var(--verde); border-radius:var(--radius-full); transition:width .6s ease; }
+    .cat-val-wrap { text-align:right; flex-shrink:0; }
+    .cat-total { font-size:var(--text-sm); font-weight:800; color:var(--saida); }
+    .cat-pct { font-size:11px; color:var(--cinza-texto); }
+    @media(max-width:768px) { .graficos-grid { grid-template-columns:1fr; } .resumo-grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-container"></div>
+  <main class="app-content">
+    <div class="content-inner">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Relatórios</h1>
+        <p class="page-subtitle">Analise seus gastos e receitas por categoria e período</p>
+      </div>
+    </div>
+
+    <div class="filtros-rel">
+      <div class="form-group">
+        <label class="form-label">Data inicial</label>
+        <input type="date" class="form-input" id="filtro-inicio">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data final</label>
+        <input type="date" class="form-input" id="filtro-fim">
+      </div>
+      <div style="display:flex;gap:6px;align-self:flex-end">
+        <button class="btn btn-primary" onclick="gerarRelatorio()"><i class="ti ti-chart-bar"></i> Gerar</button>
+        <button class="btn btn-secondary" onclick="limpar()"><i class="ti ti-x"></i> Limpar</button>
+      </div>
+    </div>
+
+    <div class="resumo-grid">
+      <div class="resumo-card">
+        <div class="resumo-label"><i class="ti ti-arrow-up" style="color:var(--verde)"></i> Total de Entradas</div>
+        <div class="resumo-valor valor-entrada" id="res-entradas">R$ 0,00</div>
+      </div>
+      <div class="resumo-card">
+        <div class="resumo-label"><i class="ti ti-arrow-down" style="color:var(--saida)"></i> Total de Saídas</div>
+        <div class="resumo-valor valor-saida" id="res-saidas">R$ 0,00</div>
+      </div>
+      <div class="resumo-card">
+        <div class="resumo-label"><i class="ti ti-wallet" style="color:var(--verde)"></i> Saldo no Período</div>
+        <div class="resumo-valor" id="res-saldo" style="color:var(--verde)">R$ 0,00</div>
+      </div>
+    </div>
+
+    <div class="graficos-grid">
+      <div class="grafico-card">
+        <div class="grafico-titulo"><i class="ti ti-chart-pie" style="color:var(--verde)"></i> Gastos por categoria</div>
+        <div style="position:relative;height:220px"><canvas id="grafico-pizza"></canvas></div>
+      </div>
+      <div class="grafico-card">
+        <div class="grafico-titulo"><i class="ti ti-chart-bar" style="color:var(--verde)"></i> Entradas vs Saídas</div>
+        <div style="position:relative;height:220px"><canvas id="grafico-barras"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-size:var(--text-base);font-weight:800;color:var(--preto);margin-bottom:var(--gap-lg);display:flex;align-items:center;gap:7px">
+        <i class="ti ti-list-details" style="color:var(--verde)"></i> Ranking de gastos
+      </div>
+      <div id="lista-relatorio"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+    </div>
+  </main>
+</div>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/utils.js"></script>
+<script src="../assets/js/guard.js"></script>
+<script src="../assets/js/sidebar.js"></script>
+<script>
+  renderSidebar('relatorios');
+  let graficoPizza = null, graficoBarras = null;
+
+  document.getElementById('filtro-inicio').value = primeiroDiaMes();
+  document.getElementById('filtro-fim').value = hoje();
+
+  async function gerarRelatorio() {
+    const dataInicio = document.getElementById('filtro-inicio').value;
+    const dataFim = document.getElementById('filtro-fim').value;
+
+    const [resGastos, resTransacoes] = await Promise.all([
+      api.relatorios.gastos({ dataInicio, dataFim }),
+      api.transacoes.listar({ dataInicio, dataFim })
+    ]);
+
+    if (resTransacoes.ok) {
+      const ts = resTransacoes.data.dados.transacoes;
+      const entradas = ts.filter(t => t.tipo === 'entrada').reduce((s, t) => s + t.valor, 0);
+      const saidas = ts.filter(t => t.tipo === 'saida').reduce((s, t) => s + t.valor, 0);
+      const saldo = entradas - saidas;
+      document.getElementById('res-entradas').textContent = formatarMoeda(entradas);
+      document.getElementById('res-saidas').textContent = formatarMoeda(saidas);
+      document.getElementById('res-saldo').textContent = formatarMoeda(saldo);
+      document.getElementById('res-saldo').style.color = saldo < 0 ? 'var(--saida)' : 'var(--verde)';
+
+      if (graficoBarras) graficoBarras.destroy();
+      graficoBarras = new Chart(document.getElementById('grafico-barras'), {
+        type: 'bar',
+        data: {
+          labels: ['Entradas', 'Saídas'],
+          datasets: [{ data: [entradas, saidas], backgroundColor: ['#00C853', '#E53935'], borderRadius: 8, borderSkipped: false }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => 'R$ ' + v.toLocaleString('pt-BR') } } } }
+      });
+    }
+
+    if (!resGastos.ok) return;
+    const { totalGeral, categorias } = resGastos.data.dados;
+
+    if (graficoPizza) graficoPizza.destroy();
+    if (categorias.length > 0) {
+      graficoPizza = new Chart(document.getElementById('grafico-pizza'), {
+        type: 'doughnut',
+        data: {
+          labels: categorias.map(c => c.categoriaNome),
+          datasets: [{ data: categorias.map(c => c.total), backgroundColor: ['#00C853','#00A344','#1B5E20','#4CAF50','#81C784','#A5D6A7','#C8E6C9'], borderWidth: 2, borderColor: '#fff' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } } }, cutout: '65%' }
+      });
+    }
+
+    const lista = document.getElementById('lista-relatorio');
+    if (categorias.length === 0) {
+      lista.innerHTML = `<div class="empty-state"><i class="ti ti-chart-pie-off empty-icon"></i><div class="empty-title">Sem gastos no período</div><div class="empty-desc">Registre saídas para ver o relatório</div></div>`;
+      return;
+    }
+
+    lista.innerHTML = categorias.map((c, i) => `
+      <div class="cat-lista-item">
+        <div class="cat-rank ${i===0?'cat-rank-1':i===1?'cat-rank-2':i===2?'cat-rank-3':''}">${i+1}</div>
+        <div class="cat-info-wrap">
+          <div class="cat-nome-row">${c.categoriaNome}</div>
+          <div class="barra-bg"><div class="barra-fill" style="width:${c.percentual}%"></div></div>
+        </div>
+        <div class="cat-val-wrap">
+          <div class="cat-total">${formatarMoeda(c.total)}</div>
+          <div class="cat-pct">${c.percentual}% do total</div>
+        </div>
+      </div>`).join('');
+  }
+
+  function limpar() {
+    document.getElementById('filtro-inicio').value = primeiroDiaMes();
+    document.getElementById('filtro-fim').value = hoje();
+    gerarRelatorio();
+  }
+
+  gerarRelatorio();
+</script>
+</body>
+</html>
