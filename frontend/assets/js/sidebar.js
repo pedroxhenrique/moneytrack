@@ -2,6 +2,7 @@ function renderSidebar(paginaAtual) {
   const base = window.location.pathname.includes('/pages/') ? '../' : '';
 
   const html = `
+  <!-- Avatar mobile (topo direito) -->
   <div class="user-avatar-mobile" id="avatar-mobile" onclick="window.location.href='${base}pages/perfil.html'" title="Meu Perfil">P</div>
 
   <nav class="sidebar">
@@ -9,6 +10,7 @@ function renderSidebar(paginaAtual) {
       <div class="sidebar-logo-icon"><i class="ti ti-trending-up"></i></div>
       <div class="sidebar-logo-text">Money<span>Track</span></div>
     </div>
+
     <div class="sidebar-nav">
       <a href="${base}pages/dashboard.html" class="sidebar-item ${paginaAtual==='dashboard'?'ativo':''}" title="Dashboard">
         <i class="ti ti-layout-dashboard"></i><span>Início</span>
@@ -28,6 +30,8 @@ function renderSidebar(paginaAtual) {
       <a href="${base}pages/mensal.html" class="sidebar-item ${paginaAtual==='mensal'?'ativo':''}" title="Mensal">
         <i class="ti ti-calendar-stats"></i><span>Mensal</span>
       </a>
+
+      <!-- Desktop only: grupo e itens extras -->
       <div class="sidebar-group">Principal</div>
       <div class="sidebar-group">Análise</div>
       <div class="sidebar-group">Conta</div>
@@ -35,6 +39,7 @@ function renderSidebar(paginaAtual) {
         <i class="ti ti-user-circle"></i><span>Meu Perfil</span>
       </a>
     </div>
+
     <div class="sidebar-footer">
       <div class="sidebar-user">
         <div class="sidebar-avatar" id="sidebar-avatar">P</div>
