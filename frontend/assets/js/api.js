@@ -4,7 +4,7 @@
  */
 
 // IMPORTANTE: Ao fazer deploy, substitua a URL abaixo pela URL do Railway
-const RAILWAY_URL = 'https://moneytrack-api-d3la.onrender.com';
+const RAILWAY_URL = 'https://SEU-PROJETO.up.railway.app';
 
 const API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? 'http://localhost:3000/api/v1'
