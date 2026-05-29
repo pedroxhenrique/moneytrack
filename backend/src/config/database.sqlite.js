@@ -20,8 +20,11 @@ async function initDatabase() {
     console.log('✅ SQLite criado:', dbPath);
   }
   db.run('PRAGMA foreign_keys = ON');
+  await criarTabelas();
+  return db;
+}
 
-  // Cria tabelas automaticamente se não existirem
+async function criarTabelas() {
   db.run(`CREATE TABLE IF NOT EXISTS usuarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nome TEXT NOT NULL,
@@ -46,14 +49,42 @@ async function initDatabase() {
     data DATE NOT NULL,
     categoria_id INTEGER NOT NULL,
     usuario_id INTEGER NOT NULL,
+    impactar_salario INTEGER DEFAULT 0,
     criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (categoria_id) REFERENCES categorias(id),
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
   )`);
 
+  try {
+    db.run(`ALTER TABLE transacoes ADD COLUMN impactar_salario INTEGER DEFAULT 0`);
+  } catch(e) { /* coluna já existe */ }
+
+  db.run(`CREATE TABLE IF NOT EXISTS salario_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER NOT NULL UNIQUE,
+    salario_base REAL NOT NULL DEFAULT 0,
+    renovacao_automatica INTEGER DEFAULT 0,
+    dia_renovacao INTEGER DEFAULT 1,
+    alerta_percentual REAL DEFAULT 80,
+    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS salario_historico (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER NOT NULL,
+    mes INTEGER NOT NULL,
+    ano INTEGER NOT NULL,
+    salario_base REAL NOT NULL,
+    total_impactado REAL DEFAULT 0,
+    saldo_final REAL DEFAULT 0,
+    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+  )`);
+
   salvarBanco();
   console.log('✅ Tabelas criadas/verificadas!');
-  return db;
 }
 
 function salvarBanco() {

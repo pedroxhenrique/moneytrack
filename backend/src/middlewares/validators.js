@@ -101,6 +101,10 @@ const validarTransacao = [
     .optional()
     .isLength({ max: 255 }).withMessage('A descrição deve ter no máximo 255 caracteres'),
 
+  body('impactarSalario')
+    .optional()
+    .isBoolean().withMessage('impactarSalario deve ser verdadeiro ou falso'),
+
   validar
 ];
 

@@ -114,6 +114,15 @@
       <label class="form-label">Descrição <span style="color:var(--cinza-texto);font-weight:400">(opcional)</span></label>
       <input type="text" class="form-input" id="input-descricao" placeholder="Ex: Almoço no restaurante...">
     </div>
+    <div style="display:flex;align-items:center;gap:var(--gap-sm);padding:12px;background:var(--fundo);border-radius:var(--radius-md);margin-bottom:var(--gap-md)">
+      <input type="checkbox" id="input-impactar-salario" style="width:18px;height:18px;cursor:pointer;accent-color:var(--azul-escuro)">
+      <div>
+        <label for="input-impactar-salario" style="font-size:var(--text-sm);font-weight:600;color:var(--texto-principal);cursor:pointer">
+          💰 Impactar saldo salarial
+        </label>
+        <div style="font-size:11px;color:var(--texto-muted)">Marque para incluir esta transação no acompanhamento salarial</div>
+      </div>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
       <button class="btn btn-primary" id="btn-salvar" onclick="salvarTransacao()"><i class="ti ti-device-floppy"></i> Salvar</button>
@@ -199,6 +208,7 @@
     document.getElementById('input-data').value = t ? t.data : hoje();
     document.getElementById('input-descricao').value = t ? (t.descricao || '') : '';
     document.getElementById('input-categoria').value = t ? t.categoria_id : '';
+    document.getElementById('input-impactar-salario').checked = t ? (t.impactar_salario === 1) : false;
     document.getElementById('alerta-modal').classList.add('alert-hidden');
     selecionarTipo(t ? t.tipo : 'entrada');
     document.getElementById('modal-overlay').classList.add('ativo');
@@ -224,7 +234,8 @@
     const btn = document.getElementById('btn-salvar');
     btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin .7s linear infinite"></i> Salvando...';
     try {
-      const dados = { tipo: tipoSelecionado, valor, data, categoriaId, descricao };
+     const impactarSalario = document.getElementById('input-impactar-salario').checked;
+    const dados = { tipo: tipoSelecionado, valor, data, categoriaId, descricao, impactarSalario }; 
       const res = editandoId ? await api.transacoes.atualizar(editandoId, dados) : await api.transacoes.criar(dados);
       if (res.ok) { fecharModal(); await carregar(); }
       else { mostrarAlerta('alerta-modal', res.data.erros?.[0]?.mensagem || res.data.mensagem || 'Erro ao salvar', 'erro'); }

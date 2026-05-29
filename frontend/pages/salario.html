@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoneyTrack — Acompanhamento Salarial</title>
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/global.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    .saldo-sal-card { background:linear-gradient(135deg,#1D4ED8 0%,#4A90E2 100%);border-radius:var(--radius-xl);padding:var(--gap-xl);color:#fff;position:relative;overflow:hidden;margin-bottom:var(--gap-lg); }
+    .saldo-sal-blob { position:absolute;border-radius:50%;background:rgba(255,255,255,0.07); }
+    .saldo-sal-blob-1 { width:200px;height:200px;top:-60px;right:-60px; }
+    .saldo-sal-blob-2 { width:140px;height:140px;bottom:-40px;left:20px; }
+    .sal-label { font-size:11px;color:rgba(255,255,255,0.65);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px; }
+    .sal-valor { font-size:clamp(2rem,5vw,2.8rem);font-weight:800;letter-spacing:-1.5px;margin-bottom:var(--gap-lg);line-height:1; }
+    .sal-stats { display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap-md); }
+    .sal-stat { background:rgba(255,255,255,0.12);border-radius:var(--radius-md);padding:var(--gap-md); }
+    .sal-stat-label { font-size:10px;color:rgba(255,255,255,0.6);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px; }
+    .sal-stat-val { font-size:var(--text-lg);font-weight:800; }
+    .alerta-card { border-radius:var(--radius-lg);padding:var(--gap-md) var(--gap-lg);margin-bottom:var(--gap-lg);display:flex;align-items:center;gap:var(--gap-md);font-weight:600; }
+    .alerta-verde { background:var(--entrada-claro);color:var(--verde-escuro);border:1px solid #A7F3D0; }
+    .alerta-amarelo { background:#FEF9C3;color:#854D0E;border:1px solid #FDE047; }
+    .alerta-laranja { background:#FEF3C7;color:#92400E;border:1px solid #FCD34D; }
+    .alerta-vermelho { background:var(--saida-claro);color:#B91C1C;border:1px solid #FECACA; }
+    .barra-wrap { margin-bottom:var(--gap-lg); }
+    .barra-info { display:flex;justify-content:space-between;margin-bottom:6px;font-size:var(--text-sm);font-weight:600; }
+    .barra-bg { height:12px;background:var(--borda);border-radius:var(--radius-full);overflow:hidden; }
+    .barra-fill { height:100%;border-radius:var(--radius-full);transition:width .6s ease; }
+    .toggle-wrap { display:flex;align-items:center;justify-content:space-between;padding:var(--gap-md);background:var(--fundo);border-radius:var(--radius-md);margin-bottom:var(--gap-md); }
+    .toggle-label { font-size:var(--text-sm);font-weight:600;color:var(--texto-principal); }
+    .toggle-sub { font-size:11px;color:var(--texto-muted); }
+    .toggle { position:relative;width:44px;height:24px;flex-shrink:0; }
+    .toggle input { opacity:0;width:0;height:0; }
+    .toggle-slider { position:absolute;inset:0;background:var(--cinza-slate);border-radius:var(--radius-full);cursor:pointer;transition:.3s; }
+    .toggle-slider:before { content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.3s; }
+    .toggle input:checked + .toggle-slider { background:var(--azul); }
+    .toggle input:checked + .toggle-slider:before { transform:translateX(20px); }
+    .cat-item { display:flex;align-items:center;gap:var(--gap-md);padding:10px 0;border-bottom:1px solid var(--borda); }
+    .cat-item:last-child { border-bottom:none; }
+    .cat-nome { flex:1;font-size:var(--text-sm);font-weight:600; }
+    .cat-val { font-size:var(--text-sm);font-weight:800;color:var(--saida); }
+    .cat-pct { font-size:11px;color:var(--texto-muted); }
+    .hist-item { display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--borda); }
+    .hist-item:last-child { border-bottom:none; }
+    .hist-mes { font-size:var(--text-sm);font-weight:700;color:var(--texto-principal); }
+    .hist-base { font-size:11px;color:var(--texto-muted); }
+    .hist-vals { text-align:right; }
+    .hist-saldo { font-size:var(--text-sm);font-weight:800; }
+    .hist-detalhe { font-size:11px;color:var(--texto-muted); }
+    @media(max-width:768px) { .sal-stats { grid-template-columns:1fr 1fr; } }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-container"></div>
+  <main class="app-content">
+    <div class="content-inner">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">💰 Acompanhamento Salarial</h1>
+          <p class="page-subtitle">Controle quanto do seu salário ainda resta no mês</p>
+        </div>
+        <div style="display:flex;gap:var(--gap-sm)">
+          <button class="btn btn-secondary" onclick="resetarSaldo()"><i class="ti ti-refresh"></i> Resetar</button>
+          <button class="btn btn-primary" onclick="abrirConfig()"><i class="ti ti-settings"></i> Configurar</button>
+        </div>
+      </div>
+
+      <div id="alerta-salarial" style="display:none" class="alerta-card"></div>
+
+      <div class="saldo-sal-card" id="card-saldo">
+        <div class="saldo-sal-blob saldo-sal-blob-1"></div>
+        <div class="saldo-sal-blob saldo-sal-blob-2"></div>
+        <div class="sal-label"><i class="ti ti-wallet" style="font-size:13px;vertical-align:-2px"></i> Saldo salarial disponível</div>
+        <div class="sal-valor" id="sal-valor-atual">R$ 0,00</div>
+        <div class="sal-stats">
+          <div class="sal-stat"><div class="sal-stat-label">Salário base</div><div class="sal-stat-val" id="sal-base">R$ 0,00</div></div>
+          <div class="sal-stat"><div class="sal-stat-label">↓ Gastos</div><div class="sal-stat-val" id="sal-gastos">R$ 0,00</div></div>
+          <div class="sal-stat"><div class="sal-stat-label">↑ Extras</div><div class="sal-stat-val" id="sal-extras">R$ 0,00</div></div>
+        </div>
+      </div>
+
+      <div class="card barra-wrap">
+        <div class="barra-info">
+          <span id="barra-label">0% do salário utilizado</span>
+          <span id="barra-alerta-info" style="color:var(--texto-muted);font-size:11px"></span>
+        </div>
+        <div class="barra-bg"><div class="barra-fill" id="barra-fill" style="width:0%;background:var(--verde)"></div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:var(--gap-lg)">
+        <div style="font-size:var(--text-base);font-weight:800;color:var(--texto-principal);margin-bottom:var(--gap-lg);display:flex;align-items:center;gap:7px">
+          <i class="ti ti-tag" style="color:var(--azul)"></i> Gastos por categoria (mês atual)
+        </div>
+        <div id="lista-categorias"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+
+      <div class="card">
+        <div style="font-size:var(--text-base);font-weight:800;color:var(--texto-principal);margin-bottom:var(--gap-lg);display:flex;align-items:center;gap:7px">
+          <i class="ti ti-history" style="color:var(--azul)"></i> Histórico mensal
+        </div>
+        <div id="lista-historico"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal Configuração -->
+<div class="modal-overlay" id="modal-config" onclick="fecharConfigFora(event)">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ Configurar Salário</div>
+      <button class="modal-fechar" onclick="fecharConfig()"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="alerta-config" class="alert alert-hidden"></div>
+    <div class="form-group">
+      <label class="form-label">Salário base mensal (R$)</label>
+      <input type="number" class="form-input" id="cfg-salario" placeholder="Ex: 2400,00" min="0" step="0.01">
+    </div>
+    <div class="toggle-wrap">
+      <div>
+        <div class="toggle-label">Renovação automática</div>
+        <div class="toggle-sub">Resetar saldo salarial automaticamente em um dia específico</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="cfg-renovacao" onchange="toggleRenovacao()">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div id="cfg-dia-wrap" style="display:none" class="form-group">
+      <label class="form-label">Dia do mês para renovação</label>
+      <input type="number" class="form-input" id="cfg-dia" placeholder="Ex: 5" min="1" max="31" value="1">
+      <span style="font-size:11px;color:var(--texto-muted)">O saldo será resetado todo mês nesse dia</span>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Alertar quando gastar <span id="cfg-pct-label" style="color:var(--azul);font-weight:700">80%</span> do salário</label>
+      <input type="range" id="cfg-alerta" min="10" max="100" step="5" value="80"
+             oninput="document.getElementById('cfg-pct-label').textContent = this.value + '%'"
+             style="width:100%;accent-color:var(--azul)">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--texto-muted)">
+        <span>10%</span><span>50%</span><span>100%</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharConfig()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar-config" onclick="salvarConfig()">
+        <i class="ti ti-device-floppy"></i> Salvar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/utils.js"></script>
+<script src="../assets/js/guard.js"></script>
+<script src="../assets/js/sidebar.js"></script>
+<script>
+  renderSidebar('salario');
+  const mesesNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  function corBarra(pct, alertaPct) {
+    if (pct >= 100) return '#EF4444';
+    if (pct >= alertaPct) return '#F97316';
+    if (pct >= alertaPct * 0.75) return '#EAB308';
+    return '#10B981';
+  }
+
+  function classeAlerta(pct, alertaPct) {
+    if (pct >= 100) return 'alerta-vermelho';
+    if (pct >= alertaPct) return 'alerta-laranja';
+    if (pct >= alertaPct * 0.75) return 'alerta-amarelo';
+    return 'alerta-verde';
+  }
+
+  function textoAlerta(pct, alertaPct, saldo) {
+    if (pct >= 100) return `⚠️ Saldo salarial esgotado! Você gastou ${pct.toFixed(0)}% do seu salário.`;
+    if (pct >= alertaPct) return `⚡ Atenção! Você já gastou ${pct.toFixed(0)}% do seu salário. Restam ${formatarMoeda(saldo)}.`;
+    if (pct >= alertaPct * 0.75) return `💛 Você gastou ${pct.toFixed(0)}% do salário. Fique de olho!`;
+    return `✅ Tudo certo! Você gastou ${pct.toFixed(0)}% do salário. Restam ${formatarMoeda(saldo)}.`;
+  }
+
+  async function carregar() {
+    const res = await api.salario.obterConfig();
+    if (!res.ok || !res.data.dados.config) {
+      document.getElementById('card-saldo').innerHTML = `
+        <div style="text-align:center;padding:var(--gap-xl)">
+          <div style="font-size:40px;margin-bottom:var(--gap-md)">💰</div>
+          <div style="font-size:var(--text-lg);font-weight:700;color:#fff;margin-bottom:var(--gap-sm)">Configure seu salário</div>
+          <div style="font-size:var(--text-sm);color:rgba(255,255,255,0.7);margin-bottom:var(--gap-lg)">Clique em "Configurar" para começar</div>
+          <button class="btn" style="background:#fff;color:var(--azul-escuro);font-weight:700" onclick="abrirConfig()">
+            <i class="ti ti-settings"></i> Configurar agora
+          </button>
+        </div>`;
+      document.getElementById('lista-categorias').innerHTML = `<div class="empty-state"><i class="ti ti-target empty-icon"></i><div class="empty-title">Configure seu salário primeiro</div></div>`;
+      document.getElementById('lista-historico').innerHTML = `<div class="empty-state"><i class="ti ti-history empty-icon"></i><div class="empty-title">Nenhum histórico ainda</div></div>`;
+      document.getElementById('alerta-salarial').style.display = 'none';
+      return;
+    }
+
+    const { saldo } = res.data.dados;
+    const pct = saldo.percentualGasto;
+    const cor = corBarra(pct, saldo.alertaPercentual);
+
+    document.getElementById('sal-valor-atual').textContent = formatarMoeda(saldo.saldoAtual);
+    document.getElementById('sal-base').textContent = formatarMoeda(saldo.salarioBase);
+    document.getElementById('sal-gastos').textContent = formatarMoeda(saldo.totalSaidas);
+    document.getElementById('sal-extras').textContent = formatarMoeda(saldo.totalEntradas);
+
+    document.getElementById('barra-fill').style.width = `${Math.min(pct, 100)}%`;
+    document.getElementById('barra-fill').style.background = cor;
+    document.getElementById('barra-label').textContent = `${pct.toFixed(0)}% do salário utilizado`;
+    document.getElementById('barra-alerta-info').textContent = `Alerta em ${saldo.alertaPercentual}%`;
+
+    const alertaEl = document.getElementById('alerta-salarial');
+    alertaEl.style.display = 'flex';
+    alertaEl.className = `alerta-card ${classeAlerta(pct, saldo.alertaPercentual)}`;
+    alertaEl.innerHTML = `<i class="ti ti-info-circle" style="font-size:20px;flex-shrink:0"></i> ${textoAlerta(pct, saldo.alertaPercentual, saldo.saldoAtual)}`;
+
+    await carregarCategorias();
+    await carregarHistorico();
+  }
+
+  async function carregarCategorias() {
+    const res = await api.salario.gastosPorCategoria();
+    const lista = document.getElementById('lista-categorias');
+    if (!res.ok || res.data.dados.gastos.length === 0) {
+      lista.innerHTML = `<div class="empty-state"><i class="ti ti-receipt-off empty-icon"></i><div class="empty-title">Nenhum gasto salarial este mês</div><div class="empty-desc">Marque "Impactar salário" nas transações</div></div>`;
+      return;
+    }
+    const totalGeral = res.data.dados.gastos.reduce((s, c) => s + parseFloat(c.total), 0);
+    lista.innerHTML = res.data.dados.gastos.map(c => {
+      const pct = totalGeral > 0 ? ((parseFloat(c.total) / totalGeral) * 100).toFixed(1) : 0;
+      return `<div class="cat-item">
+        <div class="cat-nome">${c.categoria} <span style="font-size:11px;color:var(--texto-muted)">(${c.quantidade} lanç.)</span></div>
+        <div><div class="cat-val">${formatarMoeda(parseFloat(c.total))}</div><div class="cat-pct">${pct}% dos gastos</div></div>
+      </div>`;
+    }).join('');
+  }
+
+  async function carregarHistorico() {
+    const res = await api.salario.historico();
+    const lista = document.getElementById('lista-historico');
+    if (!res.ok || res.data.dados.historico.length === 0) {
+      lista.innerHTML = `<div class="empty-state"><i class="ti ti-history empty-icon"></i><div class="empty-title">Sem histórico ainda</div><div class="empty-desc">O histórico aparece conforme você usa o módulo</div></div>`;
+      return;
+    }
+    lista.innerHTML = res.data.dados.historico.map(h => {
+      const mesNome = mesesNomes[parseInt(h.mes) - 1];
+      const saldo = parseFloat(h.entradas || 0) - parseFloat(h.saidas || 0);
+      const cor = saldo >= 0 ? 'var(--verde)' : 'var(--saida)';
+      return `<div class="hist-item">
+        <div><div class="hist-mes">${mesNome}/${h.ano}</div><div class="hist-base">${h.total_lancamentos} lançamentos</div></div>
+        <div class="hist-vals">
+          <div class="hist-saldo" style="color:${cor}">${saldo >= 0 ? '+' : ''}${formatarMoeda(saldo)}</div>
+          <div class="hist-detalhe">+${formatarMoeda(parseFloat(h.entradas||0))} / -${formatarMoeda(parseFloat(h.saidas||0))}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function abrirConfig() {
+    api.salario.obterConfig().then(res => {
+      if (res.ok && res.data.dados.config) {
+        const c = res.data.dados.config;
+        document.getElementById('cfg-salario').value = c.salario_base;
+        document.getElementById('cfg-renovacao').checked = c.renovacao_automatica === 1;
+        document.getElementById('cfg-dia').value = c.dia_renovacao;
+        document.getElementById('cfg-alerta').value = c.alerta_percentual;
+        document.getElementById('cfg-pct-label').textContent = c.alerta_percentual + '%';
+        toggleRenovacao();
+      }
+    });
+    document.getElementById('modal-config').classList.add('ativo');
+  }
+
+  function fecharConfig() { document.getElementById('modal-config').classList.remove('ativo'); }
+  function fecharConfigFora(e) { if (e.target === document.getElementById('modal-config')) fecharConfig(); }
+  function toggleRenovacao() {
+    const ativo = document.getElementById('cfg-renovacao').checked;
+    document.getElementById('cfg-dia-wrap').style.display = ativo ? 'block' : 'none';
+  }
+
+  async function salvarConfig() {
+    const salarioBase = parseFloat(document.getElementById('cfg-salario').value);
+    if (!salarioBase || salarioBase <= 0) { mostrarAlerta('alerta-config', 'Informe um salário base válido', 'erro'); return; }
+    const btn = document.getElementById('btn-salvar-config');
+    btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin .7s linear infinite"></i> Salvando...';
+    const res = await api.salario.salvarConfig({
+      salarioBase,
+      renovacaoAutomatica: document.getElementById('cfg-renovacao').checked,
+      diaRenovacao: parseInt(document.getElementById('cfg-dia').value) || 1,
+      alertaPercentual: parseFloat(document.getElementById('cfg-alerta').value)
+    });
+    if (res.ok) { fecharConfig(); await carregar(); }
+    else mostrarAlerta('alerta-config', 'Erro ao salvar', 'erro');
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-device-floppy"></i> Salvar';
+  }
+
+  async function resetarSaldo() {
+    if (!confirm('Resetar o saldo salarial do mês atual?')) return;
+    const res = await api.salario.resetar();
+    if (res.ok) { await carregar(); alert('✅ Saldo salarial resetado!'); }
+  }
+
+  carregar();
+</script>
+</body>
+</html>

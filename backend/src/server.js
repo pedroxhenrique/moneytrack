@@ -58,6 +58,7 @@ app.use('/api/v1/auth', require('./routes/authRoutes'));
 app.use('/api/v1/categorias', require('./routes/categoriaRoutes'));
 app.use('/api/v1/transacoes', require('./routes/transacaoRoutes'));
 app.use('/api/v1/saldo', require('./routes/saldoRoutes'));
+app.use('/api/v1/salario', require('./routes/salarioRoutes'));
 app.use('/api/v1/relatorios', require('./routes/relatorioRoutes'));
 
 // =====================================================
