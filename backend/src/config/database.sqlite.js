@@ -1,8 +1,3 @@
-/**
- * MoneyTrack - Banco SQLite (Desenvolvimento Local)
- * Usa sql.js (WebAssembly) - sem instalação de servidor
- */
-
 const initSqlJs = require('sql.js');
 const path = require('path');
 const fs = require('fs');
@@ -25,6 +20,39 @@ async function initDatabase() {
     console.log('✅ SQLite criado:', dbPath);
   }
   db.run('PRAGMA foreign_keys = ON');
+
+  // Cria tabelas automaticamente se não existirem
+  db.run(`CREATE TABLE IF NOT EXISTS usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    senha TEXT NOT NULL,
+    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS categorias (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    usuario_id INTEGER NOT NULL,
+    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS transacoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipo TEXT NOT NULL CHECK(tipo IN ('entrada','saida')),
+    valor REAL NOT NULL CHECK(valor > 0),
+    descricao TEXT,
+    data DATE NOT NULL,
+    categoria_id INTEGER NOT NULL,
+    usuario_id INTEGER NOT NULL,
+    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (categoria_id) REFERENCES categorias(id),
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+  )`);
+
+  salvarBanco();
+  console.log('✅ Tabelas criadas/verificadas!');
   return db;
 }
 
